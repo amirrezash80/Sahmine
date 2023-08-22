@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "437890266386",
+    "project_id": "sahmine-b22d6",
+    "storage_bucket": "sahmine-b22d6.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:437890266386:android:18a72ae093681152a8afcb",
+        "android_client_info": {
+          "package_name": "com.example.sahmine"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "437890266386-k5pdv1p58ve5mgn5i5on2m4v3kn1sjim.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRCHgeSG5a1W8ENFxCZ13jgoB6Wz26zAs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "437890266386-k5pdv1p58ve5mgn5i5on2m4v3kn1sjim.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "437890266386-7c63l5totra5qtvfmjflb8qu3kkohv4l.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.sahmine"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
