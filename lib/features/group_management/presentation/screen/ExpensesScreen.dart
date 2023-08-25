@@ -1,10 +1,10 @@
-// ExpensesScreen
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:hive/hive.dart';
 import 'package:sahmine/features/group_management/presentation/screen/transaction_screen.dart';
 import '../../data/model/groups.dart';
-import '../cubit/transaction_cubit.dart';
+import '../bloc/group_bloc.dart'; // Import the GroupBloc
+import '../bloc/group_event.dart';
+import '../bloc/group_state.dart';
 
 class ExpensesScreen extends StatefulWidget {
   final Group group;
@@ -16,41 +16,47 @@ class ExpensesScreen extends StatefulWidget {
 }
 
 class _ExpensesScreenState extends State<ExpensesScreen> {
+  late GroupBloc _groupBloc; // Declare the GroupBloc
+
+  @override
+  void initState() {
+    super.initState();
+    _groupBloc = BlocProvider.of<GroupBloc>(context); // Initialize the GroupBloc
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
-      body: BlocBuilder<TransactionCubit, TransactionState>(
-        builder: (context, state) {
-          var transactions = widget.group?.transactions;
-          return ListView.builder(
-            itemCount: transactions?.length,
-            itemBuilder: (context, index) {
-              final transaction = transactions?[index];
-              return Card(
-                elevation: 2.0,
-                margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                child: ListTile(
-                  title: Text('Amount: ${transaction?.amountSpent}'),
-                  subtitle: Text('Payer: ${transaction?.payer}'),
-                  onTap: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => TransactionScreen(
-                          group: widget.group,
-                          initialTransaction: transaction,
+      body: BlocBuilder<GroupBloc, GroupState>(
+        bloc: _groupBloc, // Provide the GroupBloc instance
+        builder: (context, groupState) {
+            return ListView.builder(
+              itemCount: widget.group.transactions!.length,
+              itemBuilder: (context, index) {
+                final transaction = widget.group.transactions![index];
+                return Card(
+                  elevation: 2.0,
+                  margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+                  child: ListTile(
+                    title: Text('Amount: ${transaction.amountSpent}'),
+                    subtitle: Text('Payer: ${transaction.payer}'),
+                    onTap: () async {
+                      await Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => TransactionScreen(
+                            group: widget.group, // Pass the updated group
+                            initialTransaction: transaction,
+                          ),
                         ),
-                      ),
-                    );
-                    // Refresh transactions after returning from TransactionScreen
-                    context.read<TransactionCubit>().fetchTransactions();
-                  },
-                ),
-              );
-            },
-          );
-        },
+                      );
+                      _groupBloc.add(UpdateGroups(widget.group)); // Update the group in GroupBloc
+                    },
+                  ),
+                );
+              },
+            );
+          }
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
@@ -60,8 +66,7 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               builder: (context) => TransactionScreen(group: widget.group),
             ),
           );
-          // Refresh transactions after returning from TransactionScreen
-          context.read<TransactionCubit>().fetchTransactions();
+          _groupBloc.add(UpdateGroups(widget.group)); // Update the group in GroupBloc
         },
         child: Icon(Icons.add),
       ),

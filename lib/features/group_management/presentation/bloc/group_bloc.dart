@@ -13,7 +13,8 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
 
     on<AddGroup>((event, emit) {
       // Update the group list with the new group
-      final updatedGroups = List<Group>.from(state.groups)..add(event.group);
+      final updatedGroups = List<Group>.from(state.groups)
+        ..add(event.group);
 
       // Emit the new state with the updated group list
       emit(state.copyWith(groups: updatedGroups));
@@ -21,7 +22,8 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
 
     on<RemoveGroup>((event, emit) {
       // Remove the specified group from the group list
-      final updatedGroups = List<Group>.from(state.groups)..remove(event.group);
+      final updatedGroups = List<Group>.from(state.groups)
+        ..remove(event.group);
 
       // Emit the new state with the updated group list
       emit(state.copyWith(groups: updatedGroups));
@@ -29,16 +31,30 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
 
     on<LoadGroups>((event, emit) {
       // Retrieve stored groups from the Hive box
-      // Retrieve stored groups from the Hive box
       final storedGroups = groupBox.values.toList();
 
       // Emit the state with the loaded group list
-      emit(state.copyWith(groups: storedGroups, status: groupStatus.GroupLoaded));
+      emit(state.copyWith(
+          groups: storedGroups, status: groupStatus.GroupLoaded));
     });
+
+    on<UpdateGroups>((event, emit) {
+      // Update the transactions of the specified group
+      final updatedGroups = List<Group>.from(state.groups);
+      final groupIndex =
+      groupBox.values.toList().indexWhere((g) => g.id == event.group.id);
+
+      if (groupIndex >= 0) {
+        updatedGroups[groupIndex] = event.group;
+      }
+
+      // Emit the new state with the updated group list
+      emit(state.copyWith(groups: updatedGroups));
+    });
+
+    // Other methods
 
     // Dispatch the LoadGroups event when the bloc is created
     add(LoadGroups());
   }
-
-// Other methods
 }

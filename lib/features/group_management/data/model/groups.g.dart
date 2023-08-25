@@ -20,6 +20,7 @@ class GroupAdapter extends TypeAdapter<Group> {
       fields[0] as int,
       fields[1] as String,
       fields[2] as String,
+      (fields[4] as List?)?.cast<Transaction>(),
     )..user = (fields[3] as List?)?.cast<Users>();
   }
 

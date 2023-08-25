@@ -1,5 +1,6 @@
 import 'package:hive/hive.dart';
 import 'package:sahmine/features/home/data/model/user.dart';
+
 import 'transaction.dart';
 
 part 'groups.g.dart';
@@ -19,8 +20,9 @@ class Group extends HiveObject {
   List<Users>? user;
 
   @HiveField(4)
-  final List<Transaction> transactions; // Add this field
+  List<Transaction>? transactions; // Initialize here
 
-  Group(this.id, this.groupname, this.description, [List<Users>? selectedUsers])
-      : transactions = <Transaction>[];
+  Group(this.id, this.groupname, this.description,
+      this.transactions, // Initialize transactions here
+      [List<Users>? selectedUsers]);
 }

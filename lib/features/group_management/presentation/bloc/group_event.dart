@@ -27,3 +27,12 @@ class RemoveGroup extends GroupEvent {
 }
 
 class LoadGroups extends GroupEvent {}
+
+class UpdateGroups extends GroupEvent {
+  final Group group;
+
+  UpdateGroups(this.group);
+
+  @override
+  List<Object?> get props => [group];
+}

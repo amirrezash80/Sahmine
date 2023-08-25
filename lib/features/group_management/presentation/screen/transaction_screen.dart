@@ -4,29 +4,49 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:sahmine/features/group_management/presentation/cubit/transaction_cubit.dart';
+
 import '../../data/model/groups.dart';
 import '../../data/model/transaction.dart';
+import '../bloc/group_bloc.dart';
+import '../bloc/group_state.dart';
+import '../bloc/group_event.dart';
 
 class TransactionScreen extends StatefulWidget {
   final Group group;
   final Transaction? initialTransaction;
 
-  TransactionScreen({required this.group, this.initialTransaction});
+  const TransactionScreen({required this.group, this.initialTransaction});
 
   @override
   _TransactionScreenState createState() => _TransactionScreenState();
 }
 
-
-
 class _TransactionScreenState extends State<TransactionScreen> {
-  String selectedPayer = ''; // Store the selected payer
-  Map<String, double> sharedCoefficients = {}; // Store shared coefficients for selected members
+  String selectedPayer = '';
+  Map<String, double> sharedCoefficients = {};
   TextEditingController descriptionController = TextEditingController();
-  String? imagePath; // Store the path of the selected image
+  String? imagePath;
   final ImagePicker _imagePicker = ImagePicker();
-   TextEditingController amountController = TextEditingController();
+  TextEditingController amountController = TextEditingController();
+  double _amount = 0.0;
+  late GroupBloc _groupBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    // Set initial values from the provided initialTransaction
+    if (widget.initialTransaction != null) {
+      final initialTransaction = widget.initialTransaction!;
+      selectedPayer = initialTransaction.payer;
+      sharedCoefficients = Map.from(initialTransaction.sharedCoefficients);
+      descriptionController.text = initialTransaction.description;
+      imagePath = initialTransaction.receiptImagePath;
+      _amount = initialTransaction.amountSpent;
+      amountController.text = _amount.toString();
+      print(_amount);
+    }
+    _groupBloc = BlocProvider.of<GroupBloc>(context);
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     final pickedImage = await _imagePicker.pickImage(source: source);
@@ -38,80 +58,85 @@ class _TransactionScreenState extends State<TransactionScreen> {
   }
 
   void _saveTransaction() {
-    final amountSpent = double.tryParse(amountController.text) ?? 0.0;
+    final amountText = amountController.text;
+    final amountSpent = double.tryParse(amountText.replaceAll(',', '.')) ?? 0.0;
+
+    if (amountSpent <= 0) {
+      // Show an error message to the user
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('خطا'),
+          content: Text('مقدار خرج وارد شده نامعتبر است.'),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('باشه'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
     final payer = selectedPayer;
     final sharedMembers = sharedCoefficients;
     final description = descriptionController.text;
     final receiptImage = imagePath;
 
-    // Create a new Transaction instance
-    final transaction = Transaction(
-      amountSpent: amountSpent,
-      payer: payer,
-      sharedCoefficients: sharedMembers,
-      description: description,
-      receiptImagePath: receiptImage,
-    );
-
-
-    // Determine whether to add a new transaction or update an existing one
-    if (widget.initialTransaction == null) {
-      // Add the transaction to the group's transactions list
-      widget.group.transactions.add(transaction);
-    } else {
-      // Update the existing transaction
-      final index =
-      widget.group.transactions.indexOf(widget.initialTransaction!);
-      widget.group.transactions[index] = transaction;
-    }
-
-    // Save the updated group to Hive
-    final box = Hive.box<Group>('groups');
-    final groupIndex = box.values
-        .toList()
-        .indexWhere((g) => g.id == widget.group.id);
-    if (groupIndex >= 0) {
-      box.putAt(groupIndex, widget.group);
-    }
-    builder :(context , child){
-      context.read<TransactionCubit>().AddTransaction(transaction);
-    };
-    // Navigate back
-    Navigator.pop(context);
-  }
-  @override
-  void initState() {
-    super.initState();
-    // Set initial values from the provided initialTransaction
     if (widget.initialTransaction != null) {
-      final initialTransaction = widget.initialTransaction!;
-      selectedPayer = initialTransaction.payer;
-      sharedCoefficients = Map.from(initialTransaction.sharedCoefficients);
-      descriptionController.text = initialTransaction.description;
-      imagePath = initialTransaction.receiptImagePath;
+      // Edit existing transaction
+      final transaction = widget.initialTransaction!;
+      transaction.amountSpent = amountSpent;
+      transaction.payer = payer;
+      transaction.sharedCoefficients = sharedMembers;
+      transaction.description = description;
+      transaction.receiptImagePath = receiptImage;
+    } else {
+      // Add new transaction
+      final transaction = Transaction(
+        amountSpent: amountSpent,
+        payer: payer,
+        sharedCoefficients: sharedMembers,
+        description: description,
+        receiptImagePath: receiptImage,
+      );
+      widget.group.transactions!.add(transaction);
     }
+
+    // Update the group in Bloc and Hive
+    _groupBloc.add(UpdateGroups(widget.group));
+    final groupBox = Hive.box<Group>('groups');
+    final groupIndex = groupBox.values.toList().indexWhere((g) => g.id == widget.group.id);
+    if (groupIndex != -1) {
+      groupBox.putAt(groupIndex, widget.group);
+    }
+
+    Navigator.pop(context);
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Add Transaction'),
+        title: const Text('اضافه کردن تراکنش'),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Amount Spent (Toman)'),
+            const Text('مبلغ پرداختی (تومان)'),
             TextFormField(
               keyboardType: TextInputType.number,
+              controller: amountController,
               decoration: const InputDecoration(
-                hintText: 'Enter amount...',
+                hintText: 'مقدار را وارد کنید...',
               ),
             ),
+
             const SizedBox(height: 16.0),
-            const Text('Payer'),
+            const Text('پرداخت کننده'),
             DropdownButton<String>(
               value: selectedPayer,
               onChanged: (value) {
@@ -121,8 +146,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
               },
               items: [
                 const DropdownMenuItem<String>(
-                  value: '', // Set an empty value for no payer selected
-                  child: Text('Select Payer'),
+                  value: '', // مقدار خالی را برای عدم انتخاب پرداخت کننده قرار دهید
+                  child: Text('انتخاب پرداخت کننده'),
                 ),
                 ...widget.group.user!.map((member) {
                   return DropdownMenuItem<String>(
@@ -149,7 +174,8 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       onChanged: (value) {
                         setState(() {
                           if (value!) {
-                            sharedCoefficients[member.name] = 1.0; // Set default coefficient to 1.0
+                            sharedCoefficients[member.name] =
+                            1.0; // ضریب پیش فرض را ۱.۰ قرار دهید
                           } else {
                             sharedCoefficients.remove(member.name);
                           }
@@ -161,11 +187,13 @@ class _TransactionScreenState extends State<TransactionScreen> {
                       Container(
                         width: 60,
                         child: TextFormField(
-                          initialValue: '1.0',
+                          initialValue:
+                          sharedCoefficients[member.name].toString(),
                           keyboardType: TextInputType.number,
                           onChanged: (value) {
                             sharedCoefficients[member.name] =
-                                double.parse(value);
+                                double.tryParse(value.replaceAll(',', '.')) ??
+                                    1.0;
                           },
                         ),
                       ),
@@ -174,16 +202,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
               }).toList(),
             ),
             const SizedBox(height: 16.0),
-            const Text('Description'),
+            const Text('توضیحات'),
             TextFormField(
               controller: descriptionController,
               maxLines: 3,
               decoration: const InputDecoration(
-                hintText: 'Enter transaction description...',
+                hintText: 'توضیحات تراکنش را وارد کنید...',
               ),
             ),
             const SizedBox(height: 16.0),
-            const Text('Receipt Image'),
+            const Text('عکس رسید'),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -197,7 +225,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                           children: [
                             ListTile(
                               leading: const Icon(Icons.camera),
-                              title: const Text('Take a Photo'),
+                              title: const Text('عکس گرفتن'),
                               onTap: () {
                                 _pickImage(ImageSource.camera);
                                 Navigator.pop(context);
@@ -205,7 +233,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                             ),
                             ListTile(
                               leading: const Icon(Icons.image),
-                              title: const Text('Pick from Gallery'),
+                              title: const Text('انتخاب از گالری'),
                               onTap: () {
                                 _pickImage(ImageSource.gallery);
                                 Navigator.pop(context);
@@ -219,7 +247,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
                   child: Row(
                     children: [
                       Icon(Icons.camera_alt_rounded),
-                      const Text(' Choose Receipt Image'),
+                      const Text(' انتخاب تصویر رسید'),
                     ],
                   ),
                 ),
@@ -236,7 +264,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _saveTransaction, // Call the save function when the button is pressed
+        onPressed: _saveTransaction,
         child: const Icon(Icons.check),
       ),
     );

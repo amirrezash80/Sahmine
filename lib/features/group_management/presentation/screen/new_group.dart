@@ -27,7 +27,7 @@ class _CreateGroupState extends State<CreateGroup> {
     final description = descriptionController.text;
 
     int currentGroupId = groupBox.length;
-    final newGroup = Group(currentGroupId, groupName, description, selectedUsers);
+    final newGroup = Group(currentGroupId, groupName, description, [] , selectedUsers);
 
     // You should add the selectedUsers list to the new group here
     newGroup.user = selectedUsers;
