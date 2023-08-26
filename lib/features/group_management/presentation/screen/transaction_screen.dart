@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:persian_number_utility/persian_number_utility.dart';
+import 'package:uuid/uuid.dart';
 
 import '../../data/model/groups.dart';
 import '../../data/model/transaction.dart';
@@ -56,18 +58,16 @@ class _TransactionScreenState extends State<TransactionScreen> {
       });
     }
   }
-
   void _saveTransaction() {
-    final amountText = amountController.text;
-    final amountSpent = double.tryParse(amountText.replaceAll(',', '.')) ?? 0.0;
-
-    if (amountSpent <= 0) {
-      // Show an error message to the user
+    // Validate that required fields are filled
+    if (selectedPayer.isEmpty ||
+        sharedCoefficients.isEmpty ||
+        amountController.text.isEmpty) {
       showDialog(
         context: context,
         builder: (context) => AlertDialog(
           title: Text('خطا'),
-          content: Text('مقدار خرج وارد شده نامعتبر است.'),
+          content: Text('لطفاً تمامی فیلدهای اجباری را پر نمایید.'),
           actions: [
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
@@ -78,6 +78,27 @@ class _TransactionScreenState extends State<TransactionScreen> {
       );
       return;
     }
+
+    final amountText = amountController.text;
+    final amountSpent = double.tryParse(amountText.replaceAll(',', '.')) ?? 0.0;
+
+    if (amountSpent <= 0) {
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: Text('خطا'),
+          content: Text('مبلغ پرداختی را به زبان انگلیسی وارد نمایید.'),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('باشه'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
 
     final payer = selectedPayer;
     final sharedMembers = sharedCoefficients;
@@ -93,7 +114,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
       transaction.description = description;
       transaction.receiptImagePath = receiptImage;
     } else {
+      var uuid = Uuid();
       // Add new transaction
+      print("here");
+      print(uuid.v4().toString());
       final transaction = Transaction(
         amountSpent: amountSpent,
         payer: payer,
@@ -121,146 +145,149 @@ class _TransactionScreenState extends State<TransactionScreen> {
       appBar: AppBar(
         title: const Text('اضافه کردن تراکنش'),
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('مبلغ پرداختی (تومان)'),
-            TextFormField(
-              keyboardType: TextInputType.number,
-              controller: amountController,
-              decoration: const InputDecoration(
-                hintText: 'مقدار را وارد کنید...',
-              ),
-            ),
-
-            const SizedBox(height: 16.0),
-            const Text('پرداخت کننده'),
-            DropdownButton<String>(
-              value: selectedPayer,
-              onChanged: (value) {
-                setState(() {
-                  selectedPayer = value!;
-                });
-              },
-              items: [
-                const DropdownMenuItem<String>(
-                  value: '', // مقدار خالی را برای عدم انتخاب پرداخت کننده قرار دهید
-                  child: Text('انتخاب پرداخت کننده'),
+      body: Directionality(
+        textDirection: TextDirection.rtl,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('مبلغ پرداختی (تومان)'),
+              TextFormField(
+                keyboardType: TextInputType.number,
+                controller: amountController,
+                decoration: const InputDecoration(
+                  hintText: 'مقدار را وارد کنید...',
                 ),
-                ...widget.group.user!.map((member) {
-                  return DropdownMenuItem<String>(
-                    value: member.name,
-                    child: Text(member.name),
+              ),
+
+              const SizedBox(height: 16.0),
+              const Text('پرداخت کننده'),
+              DropdownButton<String>(
+                value: selectedPayer,
+                onChanged: (value) {
+                  setState(() {
+                    selectedPayer = value!;
+                  });
+                },
+                items: [
+                  const DropdownMenuItem<String>(
+                    value: '', // مقدار خالی را برای عدم انتخاب پرداخت کننده قرار دهید
+                    child: Text('انتخاب پرداخت کننده'),
+                  ),
+                  ...widget.group.users!.map((member) {
+                    return DropdownMenuItem<String>(
+                      value: member.name,
+                      child: Text(member.name),
+                    );
+                  }).toList(),
+                ],
+              ),
+              const SizedBox(height: 16.0),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('اعضای سهیم'),
+                  const Text('ضریب سهم'),
+                ],
+              ),
+              Column(
+                children: widget.group.users!.map((member) {
+                  return Row(
+                    children: [
+                      Checkbox(
+                        value: sharedCoefficients.containsKey(member.name),
+                        onChanged: (value) {
+                          setState(() {
+                            if (value!) {
+                              sharedCoefficients[member.name] =
+                              1.0; // ضریب پیش فرض را ۱.۰ قرار دهید
+                            } else {
+                              sharedCoefficients.remove(member.name);
+                            }
+                          });
+                        },
+                      ),
+                      Expanded(child: Text(member.name)),
+                      if (sharedCoefficients.containsKey(member.name))
+                        Container(
+                          width: 60,
+                          child: TextFormField(
+                            initialValue:
+                            sharedCoefficients[member.name].toString(),
+                            keyboardType: TextInputType.number,
+                            onChanged: (value) {
+                              sharedCoefficients[member.name] =
+                                  double.tryParse(value.replaceAll(',', '.')) ??
+                                      1.0;
+                            },
+                          ),
+                        ),
+                    ],
                   );
                 }).toList(),
-              ],
-            ),
-            const SizedBox(height: 16.0),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('اعضای سهیم'),
-                const Text('ضریب سهم'),
-              ],
-            ),
-            Column(
-              children: widget.group.user!.map((member) {
-                return Row(
-                  children: [
-                    Checkbox(
-                      value: sharedCoefficients.containsKey(member.name),
-                      onChanged: (value) {
-                        setState(() {
-                          if (value!) {
-                            sharedCoefficients[member.name] =
-                            1.0; // ضریب پیش فرض را ۱.۰ قرار دهید
-                          } else {
-                            sharedCoefficients.remove(member.name);
-                          }
-                        });
-                      },
-                    ),
-                    Expanded(child: Text(member.name)),
-                    if (sharedCoefficients.containsKey(member.name))
-                      Container(
-                        width: 60,
-                        child: TextFormField(
-                          initialValue:
-                          sharedCoefficients[member.name].toString(),
-                          keyboardType: TextInputType.number,
-                          onChanged: (value) {
-                            sharedCoefficients[member.name] =
-                                double.tryParse(value.replaceAll(',', '.')) ??
-                                    1.0;
-                          },
-                        ),
-                      ),
-                  ],
-                );
-              }).toList(),
-            ),
-            const SizedBox(height: 16.0),
-            const Text('توضیحات'),
-            TextFormField(
-              controller: descriptionController,
-              maxLines: 3,
-              decoration: const InputDecoration(
-                hintText: 'توضیحات تراکنش را وارد کنید...',
               ),
-            ),
-            const SizedBox(height: 16.0),
-            const Text('عکس رسید'),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                ElevatedButton(
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            ListTile(
-                              leading: const Icon(Icons.camera),
-                              title: const Text('عکس گرفتن'),
-                              onTap: () {
-                                _pickImage(ImageSource.camera);
-                                Navigator.pop(context);
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.image),
-                              title: const Text('انتخاب از گالری'),
-                              onTap: () {
-                                _pickImage(ImageSource.gallery);
-                                Navigator.pop(context);
-                              },
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                  child: Row(
-                    children: [
-                      Icon(Icons.camera_alt_rounded),
-                      const Text(' انتخاب تصویر رسید'),
-                    ],
-                  ),
+              const SizedBox(height: 16.0),
+              const Text('توضیحات'),
+              TextFormField(
+                controller: descriptionController,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'توضیحات تراکنش را وارد کنید...',
                 ),
-              ],
-            ),
-            if (imagePath != null)
-              Image.file(
-                imagePath! as File,
-                height: 200,
-                width: 200,
-                fit: BoxFit.cover,
               ),
-          ],
+              const SizedBox(height: 16.0),
+              const Text('عکس رسید'),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: () {
+                      showModalBottomSheet(
+                        context: context,
+                        builder: (BuildContext context) {
+                          return Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: const Icon(Icons.camera),
+                                title: const Text('عکس گرفتن'),
+                                onTap: () {
+                                  _pickImage(ImageSource.camera);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                              ListTile(
+                                leading: const Icon(Icons.image),
+                                title: const Text('انتخاب از گالری'),
+                                onTap: () {
+                                  _pickImage(ImageSource.gallery);
+                                  Navigator.pop(context);
+                                },
+                              ),
+                            ],
+                          );
+                        },
+                      );
+                    },
+                    child: Row(
+                      children: [
+                        Icon(Icons.camera_alt_rounded),
+                        const Text(' انتخاب تصویر رسید'),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              if (imagePath != null)
+                Image.file(
+                  imagePath! as File,
+                  height: 200,
+                  width: 200,
+                  fit: BoxFit.cover,
+                ),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton(

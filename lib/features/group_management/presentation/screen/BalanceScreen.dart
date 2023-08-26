@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:persian_number_utility/persian_number_utility.dart';
 
 import '../../../home/data/model/user.dart';
 import '../../data/model/transaction.dart';
@@ -15,20 +16,19 @@ class BalanceScreen extends StatelessWidget {
     final List<Widget> owedWidgets = [];
 
     balances.forEach((payer, amount) {
-      if (amount > 0) {
+      if (amount < 0) {
         final owedUsers = balances.entries
-            .where((entry) => entry.value < 0)
+            .where((entry) => entry.value > 0)
             .map((entry) =>
-                '${entry.key} ${entry.value.abs().toStringAsFixed(2)} تومان')
+                '${entry.key} ${entry.value.abs().toStringAsFixed(1).seRagham()} تومان')
             .toList();
-
         if (owedUsers.isNotEmpty) {
           owedUsers.forEach((owedUser) {
             owedWidgets.add(
               Card(
                 child: ListTile(
                   title: Text(
-                    '$payer به $owedUser بدهکار است',
+                    '$payer از $owedUser طلبکار است',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                     ),
@@ -41,10 +41,17 @@ class BalanceScreen extends StatelessWidget {
         }
       }
     });
+    if (owedWidgets.isEmpty) {
+      owedWidgets.add(
+        Center(
+          child: Text("بدهکاری وجود ندارد"),
+        )
+      );
+    }
 
     return Scaffold(
       body: ListView(
-        children: owedWidgets,
+        children: owedWidgets
       ),
     );
   }
@@ -63,7 +70,6 @@ class BalanceScreen extends StatelessWidget {
       final totalAmount = transaction.amountSpent;
       final totalShares = sharedCoefficients.values
           .reduce((sum, coefficient) => sum + coefficient);
-
       balances[payer] = (balances[payer] ?? 0) - totalAmount;
 
       for (var sharedUser in sharedCoefficients.keys) {
@@ -72,7 +78,6 @@ class BalanceScreen extends StatelessWidget {
         balances[sharedUser] = (balances[sharedUser] ?? 0) + sharedAmount;
       }
     }
-
     return balances;
   }
 }

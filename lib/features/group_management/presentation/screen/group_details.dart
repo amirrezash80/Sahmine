@@ -16,7 +16,7 @@ class GroupDetailsScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           backgroundColor: Colors.teal,
-          title: Text(group.groupname),
+          title: Text(group.groupName),
           bottom: TabBar(
             unselectedLabelColor: Colors.black,
             indicatorColor: Colors.black,
@@ -30,7 +30,7 @@ class GroupDetailsScreen extends StatelessWidget {
         body: TabBarView(
           children: [
             ExpensesScreen(group: group),
-            BalanceScreen(users: group.user ?? [], transactions: group.transactions!,),
+            BalanceScreen(users: group.users ?? [], transactions: group.transactions!,),
           ],
         ),
       ),

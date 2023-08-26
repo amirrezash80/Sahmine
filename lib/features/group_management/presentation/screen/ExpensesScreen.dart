@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:sahmine/features/group_management/presentation/screen/transaction_screen.dart';
+import 'package:uuid/uuid.dart';
+
 import '../../data/model/groups.dart';
 import '../bloc/group_bloc.dart'; // Import the GroupBloc
 import '../bloc/group_event.dart';
@@ -21,43 +23,82 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
   @override
   void initState() {
     super.initState();
-    _groupBloc = BlocProvider.of<GroupBloc>(context); // Initialize the GroupBloc
+    _groupBloc =
+        BlocProvider.of<GroupBloc>(context); // Initialize the GroupBloc
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: BlocBuilder<GroupBloc, GroupState>(
-        bloc: _groupBloc, // Provide the GroupBloc instance
-        builder: (context, groupState) {
+          bloc: _groupBloc, // Provide the GroupBloc instance
+          builder: (context, groupState) {
             return ListView.builder(
               itemCount: widget.group.transactions!.length,
               itemBuilder: (context, index) {
                 final transaction = widget.group.transactions![index];
-                return Card(
-                  elevation: 2.0,
-                  margin: EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
-                  child: ListTile(
-                    title: Text('Amount: ${transaction.amountSpent}'),
-                    subtitle: Text('Payer: ${transaction.payer}'),
-                    onTap: () async {
-                      await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => TransactionScreen(
-                            group: widget.group, // Pass the updated group
-                            initialTransaction: transaction,
+                return Dismissible(
+                  key: Key(const Uuid().v4()),
+                  background: Container(
+                    color: Colors.red,
+                    alignment: Alignment.centerRight,
+                    padding: const EdgeInsets.only(right: 16),
+                    child: const Icon(Icons.delete),
+                  ),
+                  onDismissed: (direction) async {
+                    final confirmed = await showDialog(
+                      context: context,
+                      builder: (context) => AlertDialog(
+                        title: Text('تأیید حذف'),
+                        content: Text('آیا از حذف این تراکنش اطمینان دارید؟'),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, false),
+                            child: Text('خیر'),
                           ),
-                        ),
-                      );
-                      _groupBloc.add(UpdateGroups(widget.group)); // Update the group in GroupBloc
-                    },
+                          TextButton(
+                            onPressed: () => Navigator.pop(context, true),
+                            child: Text('بله'),
+                          ),
+                        ],
+                      ),
+                    );
+
+                    if (confirmed == true) {
+                      final transaction = widget.group.transactions![index];
+                      _groupBloc.add(RemoveTransaction(
+                        widget.group,
+                        transaction.amountSpent,
+                        transaction.description,
+                      ));
+                    }
+                  },
+                  child: Card(
+                    elevation: 2.0,
+                    margin: const EdgeInsets.symmetric(
+                        horizontal: 16.0, vertical: 8.0),
+                    child: ListTile(
+                      title: Text('Amount: ${transaction.amountSpent}'),
+                      subtitle: Text('Payer: ${transaction.payer}'),
+                      onTap: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => TransactionScreen(
+                              group: widget.group, // Pass the updated group
+                              initialTransaction: transaction,
+                            ),
+                          ),
+                        );
+                        _groupBloc.add(UpdateGroups(
+                            widget.group)); // Update the group in GroupBloc
+                      },
+                    ),
                   ),
                 );
               },
             );
-          }
-      ),
+          }),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           await Navigator.push(
@@ -66,9 +107,10 @@ class _ExpensesScreenState extends State<ExpensesScreen> {
               builder: (context) => TransactionScreen(group: widget.group),
             ),
           );
-          _groupBloc.add(UpdateGroups(widget.group)); // Update the group in GroupBloc
+          _groupBloc
+              .add(UpdateGroups(widget.group)); // Update the group in GroupBloc
         },
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add),
       ),
     );
   }

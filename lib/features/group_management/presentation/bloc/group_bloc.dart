@@ -20,15 +20,6 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
       emit(state.copyWith(groups: updatedGroups));
     });
 
-    on<RemoveGroup>((event, emit) {
-      // Remove the specified group from the group list
-      final updatedGroups = List<Group>.from(state.groups)
-        ..remove(event.group);
-
-      // Emit the new state with the updated group list
-      emit(state.copyWith(groups: updatedGroups));
-    });
-
     on<LoadGroups>((event, emit) {
       // Retrieve stored groups from the Hive box
       final storedGroups = groupBox.values.toList();
@@ -53,6 +44,37 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     });
 
     // Other methods
+    on<RemoveGroup>((event, emit) {
+      // Remove the specified group from the group list
+      final updatedGroups = List<Group>.from(state.groups)
+        ..remove(event.group);
+      // Emit the new state with the updated group list
+      emit(state.copyWith(groups: updatedGroups));
+    });
+    on<RemoveTransaction>((event, emit) {
+      final updatedGroups = List<Group>.from(state.groups);
+
+      for (final group in updatedGroups) {
+        final transactionIndex = group.transactions!.indexWhere((transaction) =>
+        transaction.amountSpent == event.amountSpent &&
+            transaction.description == event.description);
+
+        if (transactionIndex >= 0) {
+          group.transactions!.removeAt(transactionIndex);
+
+          // Update the Hive box to reflect the changes
+          final groupIndex = groupBox.values.toList().indexWhere((g) => g.id == group.id);
+          if (groupIndex != -1) {
+            groupBox.putAt(groupIndex, group);
+          }
+
+          break; // No need to search in other groups
+        }
+      }
+
+      // Update the state with the new group list
+      emit(state.copyWith(groups: updatedGroups));
+    });
 
     // Dispatch the LoadGroups event when the bloc is created
     add(LoadGroups());

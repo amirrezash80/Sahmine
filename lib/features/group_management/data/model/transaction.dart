@@ -4,6 +4,7 @@ part 'transaction.g.dart';
 
 @HiveType(typeId: 2)
 class Transaction extends HiveObject {
+
   @HiveField(0)
   late double amountSpent;
 

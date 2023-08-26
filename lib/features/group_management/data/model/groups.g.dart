@@ -21,7 +21,7 @@ class GroupAdapter extends TypeAdapter<Group> {
       fields[1] as String,
       fields[2] as String,
       (fields[4] as List?)?.cast<Transaction>(),
-    )..user = (fields[3] as List?)?.cast<Users>();
+    )..users = (fields[3] as List?)?.cast<Users>();
   }
 
   @override
@@ -31,11 +31,11 @@ class GroupAdapter extends TypeAdapter<Group> {
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
-      ..write(obj.groupname)
+      ..write(obj.groupName)
       ..writeByte(2)
       ..write(obj.description)
       ..writeByte(3)
-      ..write(obj.user)
+      ..write(obj.users)
       ..writeByte(4)
       ..write(obj.transactions);
   }

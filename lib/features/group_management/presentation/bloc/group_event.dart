@@ -1,6 +1,8 @@
 import 'package:equatable/equatable.dart';
 import 'package:sahmine/features/group_management/data/model/groups.dart';
 
+import '../../data/model/transaction.dart';
+
 abstract class GroupEvent extends Equatable {
   const GroupEvent();
 
@@ -36,3 +38,15 @@ class UpdateGroups extends GroupEvent {
   @override
   List<Object?> get props => [group];
 }
+
+class RemoveTransaction extends GroupEvent {
+  final Group group;
+  final double amountSpent;
+  final String description;
+
+  RemoveTransaction(this.group, this.amountSpent, this.description);
+
+  @override
+  List<Object?> get props => [group, amountSpent, description];
+}
+

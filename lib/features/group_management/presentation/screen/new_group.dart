@@ -30,7 +30,7 @@ class _CreateGroupState extends State<CreateGroup> {
     final newGroup = Group(currentGroupId, groupName, description, [] , selectedUsers);
 
     // You should add the selectedUsers list to the new group here
-    newGroup.user = selectedUsers;
+    newGroup.users = selectedUsers;
 
     groupBox.add(newGroup); // Add the new group to Hive
     context.read<GroupBloc>().add(AddGroup(newGroup));

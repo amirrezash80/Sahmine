@@ -55,7 +55,7 @@ class HomeScreen extends StatelessWidget {
                     EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
                     child: ListTile(
                       title: Text(
-                        group.groupname,
+                        group.groupName,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                         ),
