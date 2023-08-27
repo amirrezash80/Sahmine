@@ -17,32 +17,38 @@ class Group extends HiveObject {
   final String description;
 
   @HiveField(3)
-  List<Users>? users;
+  late List<Users>? users;
 
   @HiveField(4)
   List<Transaction>? transactions;
 
+  @HiveField(5)
+  Map<String, bool>? debtStatus;
+
   Group(
-      this.id,
-      this.groupName,
-      this.description,
-      this.transactions,
-      [List<Users>? selectedUsers]
-      );
+    this.id,
+    this.groupName,
+    this.description,
+    this.users,
+    this.transactions,
+    this.debtStatus,
+  );
 
   Group copyWith({
     int? id,
     String? groupName,
     String? description,
     List<Users>? users,
+    Map<String, bool>? debtStatus,
     List<Transaction>? transactions,
   }) {
     return Group(
       id ?? this.id,
       groupName ?? this.groupName,
       description ?? this.description,
-      transactions ?? this.transactions,
       users ?? this.users,
+      transactions ?? this.transactions,
+      debtStatus ?? this.debtStatus,
     );
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive/hive.dart';
 import 'package:image_picker/image_picker.dart';
@@ -17,7 +18,7 @@ class TransactionScreen extends StatefulWidget {
   final Group group;
   final Transaction? initialTransaction;
 
-  const TransactionScreen({required this.group, this.initialTransaction});
+  const TransactionScreen({super.key, required this.group, this.initialTransaction});
 
   @override
   _TransactionScreenState createState() => _TransactionScreenState();
@@ -45,7 +46,6 @@ class _TransactionScreenState extends State<TransactionScreen> {
       imagePath = initialTransaction.receiptImagePath;
       _amount = initialTransaction.amountSpent;
       amountController.text = _amount.toString();
-      print(_amount);
     }
     _groupBloc = BlocProvider.of<GroupBloc>(context);
   }
@@ -113,11 +113,10 @@ class _TransactionScreenState extends State<TransactionScreen> {
       transaction.sharedCoefficients = sharedMembers;
       transaction.description = description;
       transaction.receiptImagePath = receiptImage;
+      widget.group.debtStatus = {};
     } else {
       var uuid = Uuid();
       // Add new transaction
-      print("here");
-      print(uuid.v4().toString());
       final transaction = Transaction(
         amountSpent: amountSpent,
         payer: payer,
@@ -125,6 +124,7 @@ class _TransactionScreenState extends State<TransactionScreen> {
         description: description,
         receiptImagePath: receiptImage,
       );
+      widget.group.debtStatus = {};
       widget.group.transactions!.add(transaction);
     }
 
@@ -138,155 +138,179 @@ class _TransactionScreenState extends State<TransactionScreen> {
 
     Navigator.pop(context);
   }
+  Widget _buildSelectedImageWidget() {
+    if (imagePath != null) {
+      return Image.file(
+        File(imagePath!), // Convert the imagePath string to a File object
+        // height: 200,
+        // width: 200,
+        fit: BoxFit.fill,
+      );
+    } else {
+      return const SizedBox.shrink(); // Return an empty widget if no image is selected
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       appBar: AppBar(
         title: const Text('اضافه کردن تراکنش'),
       ),
       body: Directionality(
         textDirection: TextDirection.rtl,
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('مبلغ پرداختی (تومان)'),
-              TextFormField(
-                keyboardType: TextInputType.number,
-                controller: amountController,
-                decoration: const InputDecoration(
-                  hintText: 'مقدار را وارد کنید...',
-                ),
-              ),
-
-              const SizedBox(height: 16.0),
-              const Text('پرداخت کننده'),
-              DropdownButton<String>(
-                value: selectedPayer,
-                onChanged: (value) {
-                  setState(() {
-                    selectedPayer = value!;
-                  });
-                },
-                items: [
-                  const DropdownMenuItem<String>(
-                    value: '', // مقدار خالی را برای عدم انتخاب پرداخت کننده قرار دهید
-                    child: Text('انتخاب پرداخت کننده'),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('مبلغ پرداختی (تومان)'),
+                TextFormField(
+                  keyboardType: TextInputType.number,
+                  controller: amountController,
+                  decoration: const InputDecoration(
+                    hintText: 'مقدار را وارد کنید...',
                   ),
-                  ...widget.group.users!.map((member) {
-                    return DropdownMenuItem<String>(
-                      value: member.name,
-                      child: Text(member.name),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly, // Allow only digits
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _amount = double.tryParse(value.replaceAll(',', '.')) ?? 0.0;
+                    });
+                  },
+                ),
+
+                const SizedBox(height: 16.0),
+                const Text('پرداخت کننده'),
+                DropdownButton<String>(
+                  value: selectedPayer,
+                  onChanged: (value) {
+                    setState(() {
+                      selectedPayer = value!;
+                    });
+                  },
+                  items: [
+                    const DropdownMenuItem<String>(
+                      value: '',
+                      child: Text('انتخاب پرداخت کننده'),
+                    ),
+                    ...widget.group.users!.map((member) {
+                      return DropdownMenuItem<String>(
+                        value: member.name,
+                        child: Text(member.name),
+                      );
+                    }).toList(),
+                  ],
+                ),
+                const SizedBox(height: 16.0),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('اعضای سهیم'),
+                    const Text('ضریب سهم'),
+                  ],
+                ),
+                Column(
+                  children: widget.group.users!.map((member) {
+                    return Row(
+                      children: [
+                        Checkbox(
+                          value: sharedCoefficients.containsKey(member.name),
+                          onChanged: (value) {
+                            setState(() {
+                              if (value!) {
+                                sharedCoefficients[member.name] =
+                                1.0; // ضریب پیش فرض را ۱.۰ قرار دهید
+                              } else {
+                                sharedCoefficients.remove(member.name);
+                              }
+                            });
+                          },
+                        ),
+                        Expanded(child: Text(member.name)),
+                        if (sharedCoefficients.containsKey(member.name))
+                          Container(
+                            width: 60,
+                            child: TextFormField(
+                              initialValue:
+                              sharedCoefficients[member.name].toString(),
+                              keyboardType: TextInputType.number,
+                              onChanged: (value) {
+                                sharedCoefficients[member.name] =
+                                    double.tryParse(value.replaceAll(',', '.')) ??
+                                        1.0;
+                              },
+                            ),
+                          ),
+                      ],
                     );
                   }).toList(),
-                ],
-              ),
-              const SizedBox(height: 16.0),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Text('اعضای سهیم'),
-                  const Text('ضریب سهم'),
-                ],
-              ),
-              Column(
-                children: widget.group.users!.map((member) {
-                  return Row(
-                    children: [
-                      Checkbox(
-                        value: sharedCoefficients.containsKey(member.name),
-                        onChanged: (value) {
-                          setState(() {
-                            if (value!) {
-                              sharedCoefficients[member.name] =
-                              1.0; // ضریب پیش فرض را ۱.۰ قرار دهید
-                            } else {
-                              sharedCoefficients.remove(member.name);
-                            }
-                          });
-                        },
-                      ),
-                      Expanded(child: Text(member.name)),
-                      if (sharedCoefficients.containsKey(member.name))
-                        Container(
-                          width: 60,
-                          child: TextFormField(
-                            initialValue:
-                            sharedCoefficients[member.name].toString(),
-                            keyboardType: TextInputType.number,
-                            onChanged: (value) {
-                              sharedCoefficients[member.name] =
-                                  double.tryParse(value.replaceAll(',', '.')) ??
-                                      1.0;
-                            },
-                          ),
-                        ),
-                    ],
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16.0),
-              const Text('توضیحات'),
-              TextFormField(
-                controller: descriptionController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  hintText: 'توضیحات تراکنش را وارد کنید...',
                 ),
-              ),
-              const SizedBox(height: 16.0),
-              const Text('عکس رسید'),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      showModalBottomSheet(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              ListTile(
-                                leading: const Icon(Icons.camera),
-                                title: const Text('عکس گرفتن'),
-                                onTap: () {
-                                  _pickImage(ImageSource.camera);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                              ListTile(
-                                leading: const Icon(Icons.image),
-                                title: const Text('انتخاب از گالری'),
-                                onTap: () {
-                                  _pickImage(ImageSource.gallery);
-                                  Navigator.pop(context);
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    child: Row(
-                      children: [
-                        Icon(Icons.camera_alt_rounded),
-                        const Text(' انتخاب تصویر رسید'),
-                      ],
-                    ),
+                const SizedBox(height: 16.0),
+                const Text('توضیحات'),
+                TextFormField(
+                  controller: descriptionController,
+                  maxLines: 3,
+                  decoration: const InputDecoration(
+                    hintText: 'توضیحات تراکنش را وارد کنید...',
                   ),
-                ],
-              ),
-              if (imagePath != null)
-                Image.file(
-                  imagePath! as File,
-                  height: 200,
-                  width: 200,
-                  fit: BoxFit.cover,
                 ),
-            ],
+                const SizedBox(height: 16.0),
+                Center(
+                  child: Column(
+                    children: [
+                      const Text('عکس رسید'),
+                      _buildSelectedImageWidget(), // Display the selected image
+                    ],
+                  ),
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    ElevatedButton(
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          builder: (BuildContext context) {
+                            return Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                ListTile(
+                                  leading: const Icon(Icons.camera),
+                                  title: const Text('عکس گرفتن'),
+                                  onTap: () {
+                                    _pickImage(ImageSource.camera);
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                                ListTile(
+                                  leading: const Icon(Icons.image),
+                                  title: const Text('انتخاب از گالری'),
+                                  onTap: () {
+                                    _pickImage(ImageSource.gallery);
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                      child: Row(
+                        children: [
+                          Icon(Icons.camera_alt_rounded),
+                          const Text(' انتخاب تصویر رسید'),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

@@ -45,36 +45,39 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: Colors.white,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          FadeTransition(
-            opacity: _animation,
-            child: Image.asset("assets/images/LightLogo.png"),
-          ),
-          SizedBox(height: 70),
-          Container(
-            alignment: Alignment.center,
-            child: DefaultTextStyle(
-              style: const TextStyle(
-                color: Colors.black,
-                fontSize: 30.0,
-                fontFamily: 'Agne',
-              ),
-              child: AnimatedTextKit(
-                repeatForever: false,
-                animatedTexts: [
-                  TypewriterAnimatedText('به سهمینه خوش آمدید',
-                      speed: Duration(milliseconds: 100)),
-                ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Container(
+        color: Colors.white,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            FadeTransition(
+              opacity: _animation,
+              child: Image.asset("assets/images/LightLogo.png"),
+            ),
+            SizedBox(height: 70),
+            Container(
+              alignment: Alignment.center,
+              child: DefaultTextStyle(
+                style: const TextStyle(
+                  color: Colors.black,
+                  fontSize: 30.0,
+                  fontFamily: 'Agne',
+                ),
+                child: AnimatedTextKit(
+                  repeatForever: false,
+                  animatedTexts: [
+                    TypewriterAnimatedText('به سهمینه خوش آمدید',
+                        speed: Duration(milliseconds: 100)),
+                  ],
 
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

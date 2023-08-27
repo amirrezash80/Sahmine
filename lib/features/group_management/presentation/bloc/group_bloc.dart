@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:bloc/bloc.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:hive/hive.dart';
 import '../../data/model/groups.dart';
 
@@ -23,23 +26,22 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
     on<LoadGroups>((event, emit) {
       // Retrieve stored groups from the Hive box
       final storedGroups = groupBox.values.toList();
-
       // Emit the state with the loaded group list
       emit(state.copyWith(
           groups: storedGroups, status: groupStatus.GroupLoaded));
     });
 
     on<UpdateGroups>((event, emit) {
-      // Update the transactions of the specified group
       final updatedGroups = List<Group>.from(state.groups);
-      final groupIndex =
-      groupBox.values.toList().indexWhere((g) => g.id == event.group.id);
+      final groupIndex = updatedGroups.indexWhere((g) => g.id == event.group.id);
 
       if (groupIndex >= 0) {
         updatedGroups[groupIndex] = event.group;
       }
 
-      // Emit the new state with the updated group list
+      // Update the Hive box to reflect the changes
+      groupBox.putAt(groupIndex, event.group);
+
       emit(state.copyWith(groups: updatedGroups));
     });
 
@@ -68,7 +70,7 @@ class GroupBloc extends Bloc<GroupEvent, GroupState> {
             groupBox.putAt(groupIndex, group);
           }
 
-          break; // No need to search in other groups
+          break;
         }
       }
 

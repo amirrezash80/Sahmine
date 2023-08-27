@@ -3,14 +3,14 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_expandable_fab/flutter_expandable_fab.dart';
 import 'package:hive/hive.dart';
 import 'package:sahmine/features/group_management/presentation/bloc/group_bloc.dart';
-import 'package:sahmine/features/group_management/presentation/screen/new_group.dart';
-import 'package:sahmine/features/home/widgets/drawer/main_drawer.dart';
-import '../../../group_management/data/model/groups.dart';
-import '../../../group_management/presentation/bloc/group_event.dart';
-import '../../../group_management/presentation/bloc/group_status.dart';
-import '../../../group_management/presentation/bloc/group_state.dart';
-import '../../../group_management/presentation/screen/group_details.dart';
+import 'package:sahmine/features/group_management/presentation/screen/group_details.dart';
 import '../../widgets/fab.dart';
+import '../../../group_management/presentation/bloc/group_state.dart';
+import '../../../group_management/presentation/bloc/group_event.dart';
+import '../../../group_management/data/model/groups.dart';
+import '../../../group_management/presentation/bloc/group_status.dart';
+import '../../../group_management/presentation/screen/new_group.dart';
+import '../../widgets/drawer/main_drawer.dart';
 
 class HomeScreen extends StatelessWidget {
   static const String routeName = 'home';
@@ -31,7 +31,13 @@ class HomeScreen extends StatelessWidget {
 
             if (groups.isEmpty) {
               return Center(
-                child: Text("شما هنوز گروهی ایجاد نکرده اید"),
+                child: Text(
+                  "شما هنوز گروهی ایجاد نکرده اید",
+                  style: TextStyle(
+                    fontSize: 18,
+                    color: Colors.grey,
+                  ),
+                ),
               );
             }
 
@@ -58,17 +64,19 @@ class HomeScreen extends StatelessWidget {
                         group.groupName,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
+                          fontSize: 18,
                         ),
                       ),
-                      subtitle: Text(group.description),
+                      subtitle: Text(
+                        group.description,
+                        style: TextStyle(
+                          color: Colors.grey,
+                        ),
+                      ),
                       trailing: IconButton(
                         icon: Icon(Icons.delete),
                         onPressed: () {
-                          // Delete the group from Bloc
-                          context.read<GroupBloc>().add(RemoveGroup(group));
-                          // Delete the group from Hive
-                          final groupBox = Hive.box<Group>('groups');
-                          groupBox.deleteAt(index);
+                          _showDeleteConfirmationDialog(context, group, index);
                         },
                       ),
                     ),
@@ -82,5 +90,35 @@ class HomeScreen extends StatelessWidget {
         floatingActionButton: myFloatingActionButton(key),
       ),
     );
+  }
+
+  void _showDeleteConfirmationDialog(
+      BuildContext context, Group group, int index) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('تأیید حذف'),
+        content: Text('آیا از حذف این گروه اطمینان دارید؟'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('خیر'),
+          ),
+          TextButton(
+            onPressed: () {
+              _deleteGroup(context, group, index);
+              Navigator.pop(context);
+            },
+            child: Text('بله'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteGroup(BuildContext context, Group group, int index) {
+    context.read<GroupBloc>().add(RemoveGroup(group));
+    final groupBox = Hive.box<Group>('groups');
+    groupBox.deleteAt(index);
   }
 }
